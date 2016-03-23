@@ -1,0 +1,15 @@
+[
+    {
+        "id": "lmstoken",
+        "type": "text",
+        "label": "Token LetMeStream",
+        "default": ""
+    },
+    {
+        "id": "subtitlesLanguage",
+        "label": "Preferred subtitles language (premium only)",
+        "type": "enum",
+        "values": ["none", "french", "english", "deutsch", "spanish"],
+        "default": "none"
+    }
+]

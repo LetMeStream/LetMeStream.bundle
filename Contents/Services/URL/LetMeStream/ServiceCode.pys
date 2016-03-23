@@ -1,0 +1,159 @@
+####################################################################################################
+def NormalizeURL(url):
+	return url
+def ceiling(no):
+    try:
+        return int(no)
+    except:
+        Log(no)
+####################################################################################################
+def parseUrl(url):
+    urlInfos = url.replace('lms://', '').split(':')
+    infos = {
+        'mediaLocationId': str(urlInfos[0]),
+        'token': str(urlInfos[1]),
+        'audioLanguage': str(urlInfos[2]),
+        'subtitlesLanguage': str(urlInfos[3])
+    }
+    return infos
+
+def MetadataObjectForURL(url):
+    Log('Check ' + url)
+    mediaInfos = parseUrl(url)
+
+    analyzeUrl = 'http://cdn.letmestream.com/api/media/analyze?locationId=' + mediaInfos['mediaLocationId'] + '&token=' + mediaInfos['token']
+    infos = JSON.ObjectFromString(HTTP.Request(analyzeUrl, cacheTime = CACHE_1HOUR).content)
+    Log(infos)
+    Log('Metadataobjectsforurl')
+
+
+    return VideoClipObject(
+                url = url,
+				title = infos['title'],
+				summary = infos['overview'],
+				thumb = infos['poster'],
+				art = infos['backdrop'],
+				duration = int(str(infos['duration']).split('.')[0]) * 1000
+    )
+
+def MediaObjectsForURL(url):
+    Log('MediaObjectsForURL')
+    Log(url)
+    urlInfos = parseUrl(url)
+
+    mediaLocationId = urlInfos['mediaLocationId']
+    lmsToken = urlInfos['token']
+
+    Log('Analyzing ' + mediaLocationId)
+    url = 'http://cdn.letmestream.com/api/media/analyze?locationId=' + mediaLocationId + '&token=' + lmsToken
+    codecInfos = JSON.ObjectFromString(HTTP.Request(url, cacheTime = CACHE_1DAY).content)
+    duration = int(str(codecInfos['duration']).split('.')[0]) * 1000
+    cloudUrl = 'http://cdn.letmestream.com/link/' + mediaLocationId + '?token=' + lmsToken
+
+    resolution = codecInfos['resolution'].split('x')
+    videoHeight = resolution[1]
+    videoWidth = resolution[0]
+    videoResolution = str(videoHeight)
+
+    Log('Return mediaObject!')
+    Log(cloudUrl)
+    selectedSubtitles = None
+    if urlInfos['subtitlesLanguage'] and urlInfos['subtitlesLanguage'] != 'none':
+        if urlInfos['subtitlesLanguage'] == 'french':
+            urlInfos['subtitlesLanguage'] == 'fre'
+        elif urlInfos['subtitlesLanguage'] == 'english':
+            urlInfos['subtitlesLanguage'] = 'eng'
+        elif urlInfos['subtitlesLanguage'] == 'spanish':
+            urlInfos['subtitlesLanguage'] = 'spa'
+        elif urlInfos['subtitlesLanguage'] == 'deutsch':
+            urlInfos['subtitlesLanguage'] = 'dut'
+
+        subtitlesUrl = 'http://cdn.letmestream.com/api/bundles/client/subtitles/getSubtitles/' + str(mediaLocationId) + '?mediaLocationId='+ str(mediaLocationId) + '&token=' + lmsToken
+        subtitles = JSON.ObjectFromString(HTTP.Request(subtitlesUrl, cacheTime = CACHE_1HOUR).content)
+
+        for subtitle in subtitles:
+            if subtitle['key'] == urlInfos['subtitlesLanguage']:
+                selectedSubtitles = urlInfos['subtitlesLanguage']
+                break
+
+    if not codecInfos['canBeTranscoded'] or not selectedSubtitles:
+        mediaObjects = [
+            MediaObject(
+                video_resolution = videoResolution,
+                audio_channels = 2,
+                audio_codec = codecInfos['audio_format'],
+                video_codec = codecInfos['video_format'],
+                container = codecInfos['container'],
+                duration = duration,
+                protocol = 'http',
+                width = videoWidth,
+                height = videoHeight,
+                optimized_for_streaming = codecInfos['streamable'],
+                parts = [
+                    PartObject(duration = duration, key = Callback(PlayVideo, url=cloudUrl, force=0))
+                ]
+            )
+        ]
+    else:
+        mediaObjects = []
+
+    if codecInfos['canBeTranscoded'] and codecInfos['openloadUrl'] and not selectedSubtitles:
+        if selectedSubtitles:
+            mp4Url = 'http://cdn.letmestream.com/api/sessions/stream/' + str(mediaLocationId) + '.mp4?token=' + lmsToken + '&subtitles=' + selectedSubtitles
+        else:
+            mp4Url = 'http://cdn.letmestream.com/api/sessions/stream/' + str(mediaLocationId) + '.mp4?token=' + lmsToken
+        Log(mp4Url)
+        mediaObjects.append(
+            MediaObject(
+                video_resolution = videoResolution,
+                audio_channels = 2,
+                audio_codec = AudioCodec.AAC,
+                video_codec = VideoCodec.H264,
+                container = 'mp4',
+                duration = duration,
+                protocol = 'http',
+                width = videoWidth,
+                height = videoHeight,
+                optimized_for_streaming = True,
+                parts = [
+                    PartObject( duration = duration, key = Callback(PlayVideo, url=mp4Url, force=None))
+                ]
+            ),
+        )
+
+    if codecInfos['canBeTranscoded'] and (not codecInfos['openloadUrl'] or not selectedSubtitles):
+        if selectedSubtitles:
+            transcodedHLSUrl = 'http://cdn.letmestream.com/api/sessions/stream/' + mediaLocationId + '.m3u8?token=' + lmsToken + '&subtitles=' + selectedSubtitles
+        else:
+            transcodedHLSUrl = 'http://cdn.letmestream.com/api/sessions/stream/' + mediaLocationId + '.m3u8?token=' + lmsToken
+
+        Log(transcodedHLSUrl)
+        mediaObjects.append(
+            MediaObject(
+                video_resolution = videoResolution,
+                audio_channels = 2,
+                audio_codec = AudioCodec.AAC,
+                video_codec = VideoCodec.H264,
+                container = 'mpegts',
+                duration = duration,
+                protocol = 'hls',
+                width = videoWidth,
+                height = videoHeight,
+                optimized_for_streaming = True,
+                parts = [
+                    PartObject( duration = duration, key = Callback(PlayVideo, url=transcodedHLSUrl, force=1))
+                ]
+            ),
+        )
+    return mediaObjects
+
+
+@indirect
+def PlayVideo(url, force = None):
+    if force:
+        try:
+            data = HTTP.Request(url.replace('https://', 'http://')).content
+        except:
+            return PlayVideo(url, force)
+
+    return IndirectResponse(VideoClipObject, key=url)
