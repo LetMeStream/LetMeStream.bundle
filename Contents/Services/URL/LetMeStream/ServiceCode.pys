@@ -21,7 +21,7 @@ def MetadataObjectForURL(url):
     Log('Check ' + url)
     mediaInfos = parseUrl(url)
 
-    analyzeUrl = 'http://cdn.letmestream.com/api/media/analyze?locationId=' + mediaInfos['mediaLocationId'] + '&token=' + mediaInfos['token']
+    analyzeUrl = 'http://cdn.letmestream.com/api/media/analyze/' + mediaInfos['mediaLocationId'] + '?token=' + mediaInfos['token']
     infos = JSON.ObjectFromString(HTTP.Request(analyzeUrl, cacheTime = CACHE_1HOUR).content)
     Log(infos)
     Log('Metadataobjectsforurl')

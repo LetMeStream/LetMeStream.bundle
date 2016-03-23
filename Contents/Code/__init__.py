@@ -173,16 +173,6 @@ def Thumb(url, failback = None):
 
     return Redirect(R(ICON))
 
-@route(PREFIX + '/media/analyze', mediaLocationId = int, mediaItemId = int, mediaFileId = int)
-def analyzeItem(mediaLocationId, mediaItemId, mediaFileId):
-    ObjectContainer(header=L('Empty'), message=L('Analyzing media...'))
-    url = 'http://cdn.letmestream.com/api/media/analyze?locationId=' + str(mediaLocationId) + '&token=' + lmsToken
-    try:
-        analyzeInfos = JSON.ObjectFromString(HTTP.Request(url, cacheTime = CACHE_1HOUR).content)
-        return analyzeInfos
-    except:
-        return None
-
 @route(PREFIX + '/media/videoclip', itemId = int)
 def videoClipFromItem(itemId, include_container = False, includeRelated = False, includeRelatedCount = False, includeExtras = False):
     item = getItem(itemId)
