@@ -103,48 +103,64 @@ def MediaObjectsForURL(url):
         else:
             mp4Url = 'http://cdn.letmestream.com/api/sessions/stream/' + str(mediaLocationId) + '.mp4?token=' + lmsToken
         Log(mp4Url)
-        mediaObjects.append(
-            MediaObject(
-                video_resolution = videoResolution,
-                audio_channels = 2,
-                audio_codec = AudioCodec.AAC,
-                video_codec = VideoCodec.H264,
-                container = 'mp4',
-                duration = duration,
-                protocol = 'http',
-                width = videoWidth,
-                height = videoHeight,
-                optimized_for_streaming = True,
-                parts = [
-                    PartObject( duration = duration, key = Callback(PlayVideo, url=mp4Url, force=None))
-                ]
-            ),
+        mp4Obj = MediaObject(
+            video_resolution = videoResolution,
+            audio_channels = 2,
+            audio_codec = AudioCodec.AAC,
+            video_codec = VideoCodec.H264,
+            container = 'mp4',
+            duration = duration,
+            protocol = 'http',
+            width = videoWidth,
+            height = videoHeight,
+            optimized_for_streaming = True,
+            parts = [
+                PartObject( duration = duration, key = Callback(PlayVideo, url=mp4Url, force=None))
+            ]
         )
+        mediaObjects = [mp4Obj] + mediaObjects
 
-    if codecInfos['canBeTranscoded'] and (not codecInfos['openloadUrl'] or not selectedSubtitles):
+    if codecInfos['canBeTranscoded']:
         if selectedSubtitles:
             transcodedHLSUrl = 'http://cdn.letmestream.com/api/sessions/stream/' + mediaLocationId + '.m3u8?token=' + lmsToken + '&subtitles=' + selectedSubtitles
         else:
             transcodedHLSUrl = 'http://cdn.letmestream.com/api/sessions/stream/' + mediaLocationId + '.m3u8?token=' + lmsToken
 
         Log(transcodedHLSUrl)
-        mediaObjects.append(
-            MediaObject(
-                video_resolution = videoResolution,
-                audio_channels = 2,
-                audio_codec = AudioCodec.AAC,
-                video_codec = VideoCodec.H264,
-                container = 'mpegts',
-                duration = duration,
-                protocol = 'hls',
-                width = videoWidth,
-                height = videoHeight,
-                optimized_for_streaming = True,
-                parts = [
-                    PartObject( duration = duration, key = Callback(PlayVideo, url=transcodedHLSUrl, force=1))
-                ]
-            ),
+        hlsObj = MediaObject(
+            video_resolution = videoResolution,
+            audio_channels = 2,
+            audio_codec = AudioCodec.AAC,
+            video_codec = VideoCodec.H264,
+            container = 'mpegts',
+            duration = duration,
+            protocol = 'hls',
+            width = videoWidth,
+            height = videoHeight,
+            optimized_for_streaming = True,
+            parts = [
+                PartObject( duration = duration, key = Callback(PlayVideo, url=transcodedHLSUrl, force=1))
+            ]
         )
+        mediaObjects = mediaObjects + [hlsObj]
+        hlsObj = MediaObject(
+            video_resolution = videoResolution,
+            audio_channels = 2,
+            audio_codec = AudioCodec.AAC,
+            video_codec = VideoCodec.H264,
+            container = 'mpegts',
+            duration = duration,
+            protocol = 'hls',
+            width = videoWidth,
+            height = videoHeight,
+            optimized_for_streaming = True,
+            platforms = ['Android'],
+            parts = [
+                PartObject( duration = duration, key = Callback(PlayVideo, url=transcodedHLSUrl, force=1))
+            ]
+        )
+        mediaObjects = [hlsObj] + mediaObjects
+
     return mediaObjects
 
 
