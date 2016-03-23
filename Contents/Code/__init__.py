@@ -1,12 +1,6 @@
 import urllib, ssl
 from socket import timeout
 
-def ceiling(no):
-    try:
-        return int(no)
-    except:
-        Log(no)
-
 ####################################################################################################
 PREFIX = "/video/letmestream"
 NAME = "LetMeStream"
