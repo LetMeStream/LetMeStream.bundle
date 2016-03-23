@@ -24,63 +24,26 @@ def Start():
 def MainMenu():
     if not Prefs['lmstoken']:
         return ObjectContainer(header=L('Not configured'), message=L('No LetMeStream token configured.'))
-    #Plugin.AddViewGroup("Details", viewMode="InfoList", mediaType="items")
-    #Plugin.AddViewGroup("List", viewMode="List", mediaType="items")
     oc = ObjectContainer()
-    oc.add(DirectoryObject(key=Callback(TvShows, start = 0, end = 14), title=L("TvShows"), thumb=R('tvshows.png')))
-    oc.add(DirectoryObject(key=Callback(Movies, start = 0, end = 14), title=L("Movies"), thumb=R('Movies.png')))
+    oc.add(DirectoryObject(key=Callback(TvShows), title=L("TvShows"), thumb=R('tvshows.png')))
+    oc.add(DirectoryObject(key=Callback(Movies), title=L("Movies"), thumb=R('Movies.png')))
     return oc
 
-def setVar(key, value):
-    return Data.Save(key, value)
-
-def getVar(key):
-    if Data.Exists(key):
-        return Data.Load(key)
-    return None
-
 def setItem(key, value):
-    return Data.SaveObject(key, value)
+    return Data.SaveObject('lms' + str(key), value)
 
 def getItem(key):
-    if Data.Exists(key):
-        return Data.LoadObject(key)
-    return None
-
-def getItemTvShow(itemId):
-    try:
-        item = collTvShows[str(itemId)];
-        if item:
-            setItem('tvShow-' + str(itemId), item)
-        else:
-            item = getItem('tvShow-' + str(itemId))
-        return item
-    except:
-        cached = getItem('tvShow-' + str(itemId))
-        if cached:
-            return cached
-
-    return None
-
-def getItemMovie(itemId):
-    try:
-        item = collMovies[str(itemId)];
-        setItem('movie-' + str(itemId), item)
-        return item
-    except:
-        cached = getItem('movie-' + str(itemId))
-        if cached:
-            return cached
-
+    if Data.Exists('lms' + str(key)):
+        return Data.LoadObject('lms' + str(key))
     return None
 
 def ValidatePrefs():
     return True
 
 @route(PREFIX + '/TvShow', itemId = int)
-def GetTvShow(itemId, item):
+def GetTvShow(itemId):
     oc = ObjectContainer()
-    item = getItemTvShow(str(itemId))
+    item = getItem(itemId)
     if not item:
         raise Ex.MediaNotAvailable
 
@@ -92,7 +55,6 @@ def GetTvShow(itemId, item):
     seasons = JSON.ObjectFromString(content)['seasons']
     item['seasons'] = seasons
     collTvShows[str(item['id'])] = item
-    item = getItemTvShow(itemId)
     items = []
     for season in seasons:
         if season['season'] > 0:
@@ -102,7 +64,7 @@ def GetTvShow(itemId, item):
 @route(PREFIX + '/TvShow/season', itemId = int, seasonInt = int)
 def TvShowSeason(itemId, seasonInt):
     oc = ObjectContainer()
-    item = getItemTvShow(itemId)
+    item = getItem(itemId)
     oc.title1 = item['title'] + ' - Season ' + str(seasonInt)
     ObjectContainer.art = Callback(Thumb, url=item['backdrop'])
     fullIndex = 0
@@ -124,7 +86,7 @@ def TvShowSeason(itemId, seasonInt):
                 except:
                     pass
 
-                epdObject = EpisodeObject(key=Callback(videoClipFromItem, item = episode, include_container = True),  season = episode['season'], absolute_index = fullIndex, rating_key=episode['title'], title=episode['title'], art=Callback(Thumb, url = item['backdrop']), thumb=Callback(Thumb, url = episode['poster'], failback = item['poster']))
+                epdObject = EpisodeObject(key=Callback(videoClipFromItem, itemId = item['id'], include_container = True),  season = episode['season'], absolute_index = fullIndex, rating_key=episode['title'], title=episode['title'], art=Callback(Thumb, url = item['backdrop']), thumb=Callback(Thumb, url = episode['poster'], failback = item['poster']))
                 epdObject.show = item['title']
                 epdObject.season = seasonInt
                 epdObject.absolute_index = fullIndex
@@ -136,63 +98,65 @@ def TvShowSeason(itemId, seasonInt):
     return oc
 
 @route(PREFIX + '/TvShows')
-def TvShows(oc = None, start = 0, end = 14):
+def TvShows(oc = None):
     oc = ObjectContainer()
     oc.title1 = L('TvShows')
     i = 0
     items = []
-    while i < 100:
-        nitems = getItems('genretvshowall', len(items), int(end))
-        items = items + nitems
-        if len(nitems) < int(end) * i:
-            break
-        i = i + 1
     collTvShows = {}
-    for item in items:
-        try:
-            if collTvShows[str(item['id'])] or not item['title'] or not item['id']:
-                continue
-        except:
-            pass
-        item['type'] = 'show'
-
-        collTvShows[str(item['id'])] = item
-        setItem('tvShow-' + str(item['id']), item)
-        try:
-            itemKey = item['title'] + '#' + str(item['id'])
-            oc.add(TVShowObject(key=Callback(GetTvShow, itemId = item['id'], item = item), rating_key=itemKey, title=item['title'], art=Callback(Thumb, url = item['backdrop']), thumb=Callback(Thumb, url = item['poster'])))
-        except:
-            pass
-
+    start = 0
+    end = 14
+    while i < 100:
+        items = getItems('genretvshowall', start, end)
+        for item in items:
+            try:
+                if not item['id'] or collTvShows[str(item['id'])] or not item['title']:
+                    continue
+            except:
+                pass
+            item['type'] = 'show'
+            collTvShows[str(item['id'])] = item
+            setItem(item['id'], item)
+            try:
+                itemKey = item['title'] + '#' + str(item['id'])
+                oc.add(TVShowObject(key=Callback(GetTvShow, itemId = item['id']), rating_key=itemKey, title=item['title'], art=Callback(Thumb, url = item['backdrop']), thumb=Callback(Thumb, url = item['poster'])))
+            except:
+                pass
+        if len(items) < end:
+            break
+        start += len(items)
+        i += 1
     return oc
 
 @route(PREFIX + '/lmsMovies')
-def Movies(oc = None, start =0, end = 14):
+def Movies(oc = None):
     oc = ObjectContainer()
     oc.title1 = L('Movies')
     i = 0
     items = []
-    while i < 100:
-        nitems = getItems('genreall', len(items), int(end))
-        items = items + nitems
-        if len(nitems) < int(end) * i:
-            break
-        i = i + 1
+    start = 0
+    end = 14
     collMovies = {}
-    for item in items:
-        try:
-            if collMovies[str(item['id'])]:
-                continue
-        except:
-            pass
-        item['type'] = 'movie'
-        collMovies[str(item['id'])] = item
-        getItemMovie(item['id'])
-        try:
-            oc.add(MovieObject(key=Callback(videoClipFromItem, item = item, include_container = True), rating_key=item['title'], title=item['title'], art=Callback(Thumb, url = item['backdrop']), thumb=Callback(Thumb, url = item['poster'])))
-        except:
-            pass
+    while i < 100:
+        items = getItems('genreall', start, end)
+        for item in items:
+            try:
+                if not item['id'] or collMovies[str(item['id'])] or not item['title']:
+                    continue
+            except:
+                pass
+            item['type'] = 'movie'
+            collMovies[str(item['id'])] = item
+            setItem(item['id'], item)
+            try:
+                oc.add(MovieObject(key=Callback(videoClipFromItem, itemId = item['id'], include_container = True), rating_key=item['title'], title=item['title'], art=Callback(Thumb, url = item['backdrop']), thumb=Callback(Thumb, url = item['poster'])))
+            except:
+                pass
 
+        if len(items) < end:
+            break
+        start += len(items)
+        i += 1
     return oc
 
 def getUrl(item):
@@ -201,7 +165,6 @@ def getUrl(item):
         return itemUrl
     except:
         return None
-
 
 @route(PREFIX + '/thumb', url = str)
 def Thumb(url, failback = None):
@@ -215,47 +178,6 @@ def Thumb(url, failback = None):
 
     return Redirect(R(ICON))
 
-def createSession(mediaLocationId, force = False):
-    if force:
-        ext = 'm3u8'
-    else:
-        ext = 'mkv'
-
-    url = 'http://cdn.letmestream.com/api/sessions/stream/' + str(mediaLocationId) + '.' + ext + '?fromPlex=1&ext=' + ext + '&token=' + lmsToken
-    if(force == 2):
-        data = None
-        while not data:
-            try:
-                data = urllib.urlopen(url).read()
-            except:
-                return Callback(createSession, mediaLocationId = mediaLocationId, force = force)
-        return data
-    return url
-
-    if not force:
-        setVar('sessionable-' + str(mediaLocationId), True)
-        return url
-
-    return url
-
-    url = 'http://cdn.letmestream.com/api/sessions/create/' + str(mediaLocationId) + '?token=' + lmsToken
-    try:
-        r = HTTP.Request(url)
-        c = r.content
-        sessionInfos = JSON.ObjectFromString(c)
-    except:
-        Log('Unable to create session'  )
-
-    Log(sessionInfos)
-    return sessionInfos['sessionUrl']
-
-@route(PREFIX + '/data/cache', cacheKey = str)
-def cache(cacheKey, data = None):
-    try:
-        return data
-    except:
-        return None
-
 @route(PREFIX + '/media/analyze', mediaLocationId = int, mediaItemId = int, mediaFileId = int)
 def analyzeItem(mediaLocationId, mediaItemId, mediaFileId):
     ObjectContainer(header=L('Empty'), message=L('Analyzing media...'))
@@ -266,8 +188,9 @@ def analyzeItem(mediaLocationId, mediaItemId, mediaFileId):
     except:
         return None
 
-
-def videoClipFromItem(item,  include_container = False, includeRelated = False, includeRelatedCount = False, includeExtras = False):
+@route(PREFIX + '/media/videoclip', itemId = int)
+def videoClipFromItem(itemId, include_container = False, includeRelated = False, includeRelatedCount = False, includeExtras = False):
+    item = getItem(itemId)
     return CreateVideoClipObject(
         itemType = item['type'],
         item = item,
@@ -294,23 +217,6 @@ def CreateVideoClipObject(itemType, item, url, title, summary, thumb, backdrop, 
     videoWidth = 1
     duration = 0
     videoProtocol = 'HTTPMP4Video'
-    #if True:
-        #codecInfos = analyzeItem(mediaLocationId, mediaItemId, mediaFileId)
-        #if not codecInfos:
-        #    return ObjectContainer(header=L('Empty'), message=L('This media is unavailable'))
-        #Log(codecInfos)
-        #duration = int(str(codecInfos['duration']).split('.')[0]) * 1000
-        #resolution = codecInfos['resolution'].split('x')
-        #videoHeight = resolution[1]
-        #videoWidth = resolution[0]
-        #videoResolution = str(videoHeight)
-        #videoCodec = str(codecInfos['video_format'])
-        #audioCodec = str(codecInfos['audio_format'])
-
-        #supportedFormats = ['mp3', 'aac', 'mp4', 'h264', 'wav']
-        #if audioCodec in supportedFormats and videoCodec in supportedFormats:
-        #    optimizedForStreaming = True
-        #    Log('File is streamble')
 
     classmap = {
         'generic': VideoClipObject,
@@ -325,9 +231,7 @@ def CreateVideoClipObject(itemType, item, url, title, summary, thumb, backdrop, 
             rating_key = url,
             title = title,
             art = Callback(Thumb, url=backdrop),
-            thumb =  Callback(Thumb, url=thumb),
-            #duration = duration,
-            #resolution = videoResolution
+            thumb =  Callback(Thumb, url=thumb)
         )
     else :
         videoclip_obj = classmap[itemType](
@@ -336,7 +240,6 @@ def CreateVideoClipObject(itemType, item, url, title, summary, thumb, backdrop, 
             title = title,
             art = Callback(Thumb, url=backdrop),
             thumb =  Callback(Thumb, url=thumb),
-            #duration = duration,
             summary = summary
 
         )
@@ -349,8 +252,8 @@ def getItems(itemsType, start=0, end=14):
     try:
         if not start:
             start = str(0)
-        url = 'http://cdn.letmestream.com/api/plex/frontParse/' + itemsType + '/' + str(start) + ',' + str(int(start) + int(end)) + '?token=' + lmsToken
+        url = 'http://cdn.letmestream.com/api/plex/frontParse/' + itemsType + '/' + str(start) + ',' + str(int(start) + int(end) + 2) + '?token=' + lmsToken
         items = JSON.ObjectFromString(HTTP.Request(url, cacheTime = CACHE_1DAY).content)['items']
         return items
     except:
-        return getItems(itemsType = itemsType, start=start, end=end)
+        return []
