@@ -11,8 +11,8 @@ This is a Plex channel that can pull your LetMeStream Movies and TvShows on it.
 
 ## Installation notes
 You need your LetMeStream token to use this channel.
-(LetMeStream token will be available soon on LetMeStream)
+
 
 After installation:
 - paste your LetMeStream token in the channel preferences
-- select subtitles preference (if premium)
+- select subtitles preference (if premium) to auto-play subtitled version
