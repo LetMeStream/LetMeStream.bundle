@@ -79,7 +79,7 @@ def MediaObjectsForURL(url):
     if not codecInfos['canBeTranscoded'] or not selectedSubtitles:
         mediaObjects = [
             MediaObject(
-                video_resolution = videoResolution,
+                video_resolution = 'Original file (' + codecInfos['container'] + ')',
                 audio_channels = 2,
                 audio_codec = codecInfos['audio_format'],
                 video_codec = codecInfos['video_format'],
@@ -104,7 +104,7 @@ def MediaObjectsForURL(url):
             mp4Url = 'http://cdn.letmestream.com/api/sessions/stream/' + str(mediaLocationId) + '.mp4?token=' + lmsToken
         Log(mp4Url)
         mp4Obj = MediaObject(
-            video_resolution = videoResolution,
+            video_resolution = 'Transcoded (mp4)',
             audio_channels = 2,
             audio_codec = AudioCodec.AAC,
             video_codec = VideoCodec.H264,
@@ -118,17 +118,17 @@ def MediaObjectsForURL(url):
                 PartObject( duration = duration, key = Callback(PlayVideo, url=mp4Url, force=None))
             ]
         )
-        mediaObjects = [mp4Obj] + mediaObjects
+        mediaObjects.append(mp4Obj)
 
     if codecInfos['canBeTranscoded']:
         if selectedSubtitles:
-            transcodedHLSUrl = 'http://cdn.letmestream.com/api/sessions/stream/' + mediaLocationId + '.m3u8?token=' + lmsToken + '&subtitles=' + selectedSubtitles
+            transcodedHLSUrl = 'http://cdn.letmestream.com/api/sessions/stream/' + mediaLocationId + '.m3u8?forced=1&token=' + lmsToken + '&subtitles=' + selectedSubtitles
         else:
-            transcodedHLSUrl = 'http://cdn.letmestream.com/api/sessions/stream/' + mediaLocationId + '.m3u8?token=' + lmsToken
+            transcodedHLSUrl = 'http://cdn.letmestream.com/api/sessions/stream/' + mediaLocationId + '.m3u8?forced=1&token=' + lmsToken
 
         Log(transcodedHLSUrl)
         hlsObj = MediaObject(
-            video_resolution = videoResolution,
+            video_resolution = 'Transcoded (hls)',
             audio_channels = 2,
             audio_codec = AudioCodec.AAC,
             video_codec = VideoCodec.H264,
@@ -142,24 +142,7 @@ def MediaObjectsForURL(url):
                 PartObject( duration = duration, key = Callback(PlayVideo, url=transcodedHLSUrl, force=1))
             ]
         )
-        mediaObjects = mediaObjects + [hlsObj]
-        hlsObj = MediaObject(
-            video_resolution = videoResolution,
-            audio_channels = 2,
-            audio_codec = AudioCodec.AAC,
-            video_codec = VideoCodec.H264,
-            container = 'mpegts',
-            duration = duration,
-            protocol = 'hls',
-            width = videoWidth,
-            height = videoHeight,
-            optimized_for_streaming = True,
-            platforms = ['Android'],
-            parts = [
-                PartObject( duration = duration, key = Callback(PlayVideo, url=transcodedHLSUrl, force=1))
-            ]
-        )
-        mediaObjects = [hlsObj] + mediaObjects
+        mediaObjects.append(hlsObj)
 
     return mediaObjects
 
