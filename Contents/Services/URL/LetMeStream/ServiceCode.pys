@@ -45,7 +45,7 @@ def MediaObjectsForURL(url):
     lmsToken = urlInfos['token']
 
     Log('Analyzing ' + mediaLocationId)
-    url = 'http://cdn.letmestream.com/api/media/analyze?locationId=' + mediaLocationId + '&token=' + lmsToken
+    url = 'http://cdn.letmestream.com/api/media/analyze/' + mediaLocationId + '?token=' + lmsToken
     codecInfos = JSON.ObjectFromString(HTTP.Request(url, cacheTime = CACHE_1DAY).content)
     duration = int(str(codecInfos['duration']).split('.')[0]) * 1000
     cloudUrl = 'http://cdn.letmestream.com/link/' + mediaLocationId + '?token=' + lmsToken
