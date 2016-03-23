@@ -9,7 +9,7 @@
         "id": "subtitlesLanguage",
         "label": "Preferred subtitles language (premium only)",
         "type": "enum",
-        "values": ["none", "french", "english", "deutsch", "spanish"],
+        "values": ["none", "fre", "eng", "dut", "spa"],
         "default": "none"
     }
 ]

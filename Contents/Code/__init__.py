@@ -81,7 +81,7 @@ def TvShowSeason(itemId, seasonInt):
                 except:
                     pass
                 setItem(episode['id'], episode)
-                epdObject = EpisodeObject(key=Callback(videoClipFromItem, itemId = episode['id'], include_container = True),  season = episode['season'], absolute_index = fullIndex, rating_key=episode['title'], title=episode['title'], art=Callback(Thumb, url = item['backdrop']), thumb=Callback(Thumb, url = episode['poster'], failback = item['poster']))
+                epdObject = EpisodeObject(key=Callback(videoClipFromItem, itemId = episode['id'], include_container = True),  season = episode['season'], absolute_index = fullIndex, rating_key=episode['title'], title=episode['title'], art=Callback(Thumb, url = item['backdrop']), thumb=Callback(Thumb, url = episode['poster'], failback = item['poster']), summary = episode['overview'])
                 epdObject.show = item['title']
                 epdObject.season = seasonInt
                 epdObject.absolute_index = fullIndex
@@ -117,7 +117,7 @@ def TvShows(oc = None):
                 oc.add(TVShowObject(key=Callback(GetTvShow, itemId = item['id']), rating_key=itemKey, title=item['title'], art=Callback(Thumb, url = item['backdrop']), thumb=Callback(Thumb, url = item['poster'])))
             except:
                 pass
-        if len(items) < end:
+        if len(items) < 1:
             break
         start += len(items)
         i += 1
@@ -148,7 +148,7 @@ def Movies(oc = None):
             except:
                 pass
 
-        if len(items) < end:
+        if len(items) < 1:
             break
         start += len(items)
         i += 1
@@ -237,7 +237,7 @@ def getItems(itemsType, start=0, end=14):
     try:
         if not start:
             start = str(0)
-        url = 'http://cdn.letmestream.com/api/plex/frontParse/' + itemsType + '/' + str(start) + ',' + str(int(start) + int(end) + 2) + '?token=' + lmsToken
+        url = 'http://cdn.letmestream.com/api/plex/frontParse/' + itemsType + '/' + str(start) + ',' + str(int(end)) + '?token=' + lmsToken
         items = JSON.ObjectFromString(HTTP.Request(url, cacheTime = CACHE_1DAY).content)['items']
         return items
     except:
