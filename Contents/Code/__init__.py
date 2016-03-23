@@ -49,7 +49,7 @@ def GetTvShow(itemId):
     seasons = JSON.ObjectFromString(content)['seasons']
     item['seasons'] = seasons
     collTvShows[str(item['id'])] = item
-    items = []
+    setItem(item['id'], item)
     for season in seasons:
         if season['season'] > 0:
             oc.add(SeasonObject(show=item['title'], episode_count=len(season['episodes']), key=Callback(TvShowSeason, itemId = item['id'], seasonInt = season['season']), rating_key=str(item['id']) + '-' + str(season['season']), title="Season " + str(season['season']), thumb=Callback(Thumb, url=item['poster'] + '?' + str(season['season']))))
@@ -69,6 +69,7 @@ def TvShowSeason(itemId, seasonInt):
                 fullIndex = fullIndex + 1
                 episode =  JSON.ObjectFromString(episode)
                 episode = episodes[str(episode)]
+                Log(episode)
                 episode['backdrop'] = item['backdrop']
                 episode['type'] = 'episode'
                 episode['poster'] = episode['thumb']
@@ -79,8 +80,8 @@ def TvShowSeason(itemId, seasonInt):
                         openSubtitlesHash = episode['subtitlesHash'][0]
                 except:
                     pass
-
-                epdObject = EpisodeObject(key=Callback(videoClipFromItem, itemId = item['id'], include_container = True),  season = episode['season'], absolute_index = fullIndex, rating_key=episode['title'], title=episode['title'], art=Callback(Thumb, url = item['backdrop']), thumb=Callback(Thumb, url = episode['poster'], failback = item['poster']))
+                setItem(episode['id'], episode)
+                epdObject = EpisodeObject(key=Callback(videoClipFromItem, itemId = episode['id'], include_container = True),  season = episode['season'], absolute_index = fullIndex, rating_key=episode['title'], title=episode['title'], art=Callback(Thumb, url = item['backdrop']), thumb=Callback(Thumb, url = episode['poster'], failback = item['poster']))
                 epdObject.show = item['title']
                 epdObject.season = seasonInt
                 epdObject.absolute_index = fullIndex
